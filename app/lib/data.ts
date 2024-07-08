@@ -2,12 +2,20 @@ import { sql } from '@vercel/postgres';
 import {
   CustomerField,
   CustomersTableType,
+  Invoice,
+  Customer,
   InvoiceForm,
   InvoicesTable,
   LatestInvoiceRaw,
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
+import {
+  invoices,
+  customers,
+  revenue,
+  users,
+} from './placeholder-data';
 
 export async function fetchRevenue() {
   try {
@@ -17,11 +25,12 @@ export async function fetchRevenue() {
     // console.log('Fetching revenue data...');
     // await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    const data = await sql<Revenue>`SELECT * FROM revenue`;
+    // const data = await sql<Revenue>`SELECT * FROM revenue`;
 
     // console.log('Data fetch completed after 3 seconds.');
 
-    return data.rows;
+    // return data.rows;
+    return revenue;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch revenue data.');
@@ -91,28 +100,47 @@ export async function fetchFilteredInvoices(
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await sql<InvoicesTable>`
-      SELECT
-        invoices.id,
-        invoices.amount,
-        invoices.date,
-        invoices.status,
-        customers.name,
-        customers.email,
-        customers.image_url
-      FROM invoices
-      JOIN customers ON invoices.customer_id = customers.id
-      WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
-      ORDER BY invoices.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    `;
+    // const invoices = await sql<InvoicesTable>`
+    //   SELECT
+    //     invoices.id,
+    //     invoices.amount,
+    //     invoices.date,
+    //     invoices.status,
+    //     customers.name,
+    //     customers.email,
+    //     customers.image_url
+    //   FROM invoices
+    //   JOIN customers ON invoices.customer_id = customers.id
+    //   WHERE
+    //     customers.name ILIKE ${`%${query}%`} OR
+    //     customers.email ILIKE ${`%${query}%`} OR
+    //     invoices.amount::text ILIKE ${`%${query}%`} OR
+    //     invoices.date::text ILIKE ${`%${query}%`} OR
+    //     invoices.status ILIKE ${`%${query}%`}
+    //   ORDER BY invoices.date DESC
+    //   LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+    // `;
 
-    return invoices.rows;
+    // return invoices.rows;
+    const test: InvoicesTable[] = []
+    invoices.map((item)=>{
+      customers.map((item2: Customer)=>{
+        if(item.customer_id == item2.id){
+          const data: InvoicesTable = {
+            id: item2.id,
+            customer_id: item.customer_id,
+            amount: item.amount,
+            date: new Date().toISOString().split('T')[0],
+            status: item.status == "pending" ? "pending" : "paid",
+            name: item2.name,
+            email: item2.email,
+            image_url: item2.image_url,
+          }
+          test.push(data)
+        }
+      })
+    })
+    return test;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch invoices.');
@@ -121,19 +149,20 @@ export async function fetchFilteredInvoices(
 
 export async function fetchInvoicesPages(query: string) {
   try {
-    const count = await sql`SELECT COUNT(*)
-    FROM invoices
-    JOIN customers ON invoices.customer_id = customers.id
-    WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
-  `;
+  //   const count = await sql`SELECT COUNT(*)
+  //   FROM invoices
+  //   JOIN customers ON invoices.customer_id = customers.id
+  //   WHERE
+  //     customers.name ILIKE ${`%${query}%`} OR
+  //     customers.email ILIKE ${`%${query}%`} OR
+  //     invoices.amount::text ILIKE ${`%${query}%`} OR
+  //     invoices.date::text ILIKE ${`%${query}%`} OR
+  //     invoices.status ILIKE ${`%${query}%`}
+  // `;
 
-    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
-    return totalPages;
+  //   const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
+  //   return totalPages;
+  return invoices.length;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch total number of invoices.');
@@ -142,23 +171,30 @@ export async function fetchInvoicesPages(query: string) {
 
 export async function fetchInvoiceById(id: string) {
   try {
-    const data = await sql<InvoiceForm>`
-      SELECT
-        invoices.id,
-        invoices.customer_id,
-        invoices.amount,
-        invoices.status
-      FROM invoices
-      WHERE invoices.id = ${id};
-    `;
+    // const data = await sql<InvoiceForm>`
+    //   SELECT
+    //     invoices.id,
+    //     invoices.customer_id,
+    //     invoices.amount,
+    //     invoices.status
+    //   FROM invoices
+    //   WHERE invoices.id = ${id};
+    // `;
 
-    const invoice = data.rows.map((invoice) => ({
-      ...invoice,
-      // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
-    }));
+    // const invoice = data.rows.map((invoice) => ({
+    //   ...invoice,
+    //   // Convert amount from cents to dollars
+    //   amount: invoice.amount / 100,
+    // }));
 
-    return invoice[0];
+    // return invoice[0];
+    const data : any[] = []
+    invoices.map((item)=>{
+      if(item.customer_id == id){
+        data.push(item)
+      }
+    })
+    return data[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch invoice.');
@@ -167,15 +203,16 @@ export async function fetchInvoiceById(id: string) {
 
 export async function fetchCustomers() {
   try {
-    const data = await sql<CustomerField>`
-      SELECT
-        id,
-        name
-      FROM customers
-      ORDER BY name ASC
-    `;
+    // const data = await sql<CustomerField>`
+    //   SELECT
+    //     id,
+    //     name
+    //   FROM customers
+    //   ORDER BY name ASC
+    // `;
 
-    const customers = data.rows;
+    // const customers = data.rows;
+    // return customers;
     return customers;
   } catch (err) {
     console.error('Database Error:', err);
